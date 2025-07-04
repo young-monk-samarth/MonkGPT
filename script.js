@@ -26,25 +26,48 @@ document.addEventListener("DOMContentLoaded", () => {
     chatContainer.appendChild(message);
     responseCount += isUser ? 0 : 1;
   });
-  scrollIfNeeded(chatContainer); // Scroll only if needed
-  updateBodyOverflow(chatContainer); // Set initial body overflow
-  document.getElementById("userInput").focus(); // Focus input on load
+  scrollIfNeeded(chatContainer);
+  updateBodyOverflow(chatContainer);
+  document.getElementById("userInput").focus();
 
-  // Handle mobile keyboard visibility
+  // Enhanced mobile keyboard handling
   const inputContainer = document.querySelector(".input-container");
   const userInput = document.getElementById("userInput");
+  
   userInput.addEventListener("focus", () => {
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
-        inputContainer.style.bottom = `${window.innerHeight - window.visualViewport.height + 10}px`;
-      });
+      const updateLayout = () => {
+        const viewportHeight = window.visualViewport.height;
+        const offset = window.innerHeight - viewportHeight;
+        
+        // Adjust input container position
+        inputContainer.style.bottom = `${Math.max(offset + 10, 10)}px`;
+        
+        // Adjust chat container height
+        chatContainer.style.maxHeight = `${viewportHeight - 180}px`;
+        scrollIfNeeded(chatContainer);
+      };
+      
+      window.visualViewport.addEventListener("resize", updateLayout);
+      window.visualViewport.addEventListener("scroll", updateLayout);
+      
+      // Store cleanup function
+      userInput._cleanupViewport = () => {
+        window.visualViewport.removeEventListener("resize", updateLayout);
+        window.visualViewport.removeEventListener("scroll", updateLayout);
+      };
+      
+      updateLayout();
     }
   });
+
   userInput.addEventListener("blur", () => {
-    inputContainer.style.bottom = "0.75rem"; // Reset to default (matches CSS for max-width: 480px)
-    if (window.visualViewport) {
-      window.visualViewport.removeEventListener("resize", () => {});
+    if (userInput._cleanupViewport) {
+      userInput._cleanupViewport();
     }
+    // Reset to default values from CSS
+    inputContainer.style.bottom = "";
+    chatContainer.style.maxHeight = "";
   });
 });
 
@@ -60,11 +83,11 @@ document.getElementById("userInput").addEventListener("keypress", (event) => {
 document.getElementById("clearButton").addEventListener("click", () => {
   const chatContainer = document.getElementById("chatContainer");
   const userInput = document.getElementById("userInput");
-  localStorage.removeItem("chatHistory"); // Clear localStorage
-  chatContainer.innerHTML = ""; // Clear all messages
-  responseCount = 0; // Reset response count
-  updateBodyOverflow(chatContainer); // Update body overflow
-  userInput.focus(); // Refocus input
+  localStorage.removeItem("chatHistory");
+  chatContainer.innerHTML = "";
+  responseCount = 0;
+  updateBodyOverflow(chatContainer);
+  userInput.focus();
 });
 
 // Save message to localStorage
@@ -86,8 +109,8 @@ document.getElementById("askButton").addEventListener("click", async () => {
     errorMessage.className = "message bot-message bot-message-bg-1";
     errorMessage.innerText = "Please enter a question.";
     chatContainer.appendChild(errorMessage);
-    scrollIfNeeded(chatContainer); // Scroll only if needed
-    updateBodyOverflow(chatContainer); // Update body overflow
+    scrollIfNeeded(chatContainer);
+    updateBodyOverflow(chatContainer);
     saveMessage("Please enter a question.", false);
     return;
   }
@@ -98,8 +121,8 @@ document.getElementById("askButton").addEventListener("click", async () => {
   userMessage.innerText = query;
   chatContainer.appendChild(userMessage);
   saveMessage(query, true);
-  scrollIfNeeded(chatContainer); // Scroll only if needed
-  updateBodyOverflow(chatContainer); // Update body overflow
+  scrollIfNeeded(chatContainer);
+  updateBodyOverflow(chatContainer);
 
   // Clear input and refocus
   userInput.value = "";
@@ -114,8 +137,8 @@ document.getElementById("askButton").addEventListener("click", async () => {
   thinkingMessage.className = "message bot-message bot-message-bg-1 thinking";
   thinkingMessage.innerText = "Thinking...";
   chatContainer.appendChild(thinkingMessage);
-  scrollIfNeeded(chatContainer); // Scroll only if needed
-  updateBodyOverflow(chatContainer); // Update body overflow
+  scrollIfNeeded(chatContainer);
+  updateBodyOverflow(chatContainer);
 
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
@@ -147,8 +170,8 @@ document.getElementById("askButton").addEventListener("click", async () => {
     botMessage.innerText = reply;
     chatContainer.appendChild(botMessage);
     saveMessage(reply, false);
-    scrollIfNeeded(chatContainer); // Scroll only if needed
-    updateBodyOverflow(chatContainer); // Update body overflow
+    scrollIfNeeded(chatContainer);
+    updateBodyOverflow(chatContainer);
   } catch (err) {
     // Remove "Thinking..." message
     chatContainer.removeChild(thinkingMessage);
@@ -159,8 +182,8 @@ document.getElementById("askButton").addEventListener("click", async () => {
     errorMessage.innerText = "Error: " + err.message;
     chatContainer.appendChild(errorMessage);
     saveMessage("Error: " + err.message, false);
-    scrollIfNeeded(chatContainer); // Scroll only if needed
-    updateBodyOverflow(chatContainer); // Update body overflow
+    scrollIfNeeded(chatContainer);
+    updateBodyOverflow(chatContainer);
   } finally {
     // Re-enable button
     askButton.disabled = false;
